@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<assembly>
+  <id>mapreduce-job</id>
+  <formats>
+    <format>jar</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+  <fileSets>
+    <fileSet>
+      <directory>${basedir}/target/classes</directory>
+      <outputDirectory>/</outputDirectory>
+    </fileSet>
+  </fileSets>
+  <dependencySets>
+    <dependencySet>
+      <outputDirectory>lib</outputDirectory>
+      <unpack>false</unpack>
+      <scope>runtime</scope>
+      <excludes>
+        <exclude>org.apache.hadoop:hadoop-core</exclude>
+        <exclude>org.slf4j:slf4j-api</exclude>
+        <exclude>org.slf4j:jcl-over-slf4j</exclude>
+        <exclude>org.slf4j:slf4j-log4j12</exclude>
+      </excludes>
+    </dependencySet>
+  </dependencySets>
+</assembly>
