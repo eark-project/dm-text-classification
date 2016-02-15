@@ -10,8 +10,8 @@ from sklearn.externals import joblib
 
 # The training data folder must be passed as first argument.
 # Subfolders are named according to the subcategories that are represented by the files found inside.
-languages_data_folder = '/home/janrn/Development/machinelearning/articles'
-dataset = load_files(languages_data_folder)
+data_folder = '/home/janrn/Development/machinelearning/articles'
+dataset = load_files(data_folder)
 
 # Split the dataset in training and test set:
 docs_train, docs_test, y_train, y_test = train_test_split(
