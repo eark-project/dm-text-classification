@@ -136,7 +136,7 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
         
         if ("application/pdf".equals(fileType)) {
             // special case: BLOB is a pdf - extract the text and write as plain text
-            BodyContentHandler handler = new BodyContentHandler();
+            BodyContentHandler handler = new BodyContentHandler(-1); // -1 means no char limit on parse
             Metadata metadata = new Metadata();
             FSDataInputStream inputstream = new FSDataInputStream(fs.open(pt));
             ParseContext pcontext = new ParseContext();
