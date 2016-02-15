@@ -10,16 +10,16 @@ This is a short introduction, for more in-depth information please refer to the 
 in the following way:
 
     root folder
-        | category A
-            | file 1
-            | file ...
-            | file n
-        | category B
-            | file 1
-            | file ...
-            | file n
+        category A
+            file 1
+            file ...
+            file n
+        category B
+            file 1
+            file ...
+            file n
 
-    The folder names <category> equal the names of the categories. Every file in a folder is assigned to this category. Filenames do not matter.
+* The folder names <category> equal the names of the categories. Every file in a folder is assigned to this category. Filenames do not matter.
 
 The number of files you need depends mostly on the number of categories and the algorithm used for classification.
 
