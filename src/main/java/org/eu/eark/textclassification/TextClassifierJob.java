@@ -25,13 +25,8 @@ import org.apache.hadoop.util.ToolRunner;
 import org.lilyproject.client.LilyClient;
 import org.lilyproject.mapreduce.LilyMapReduceUtil;
 import org.lilyproject.repository.api.TableManager;
-import org.lilyproject.repository.api.RepositoryException;
 
 import java.io.IOException;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 /**
  *

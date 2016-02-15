@@ -1,6 +1,9 @@
 # dm-text-classification
 
-This works, but is still work in progress.
+This is essentially a MapReduce Job to perform text classification on a Hadoop cluster.
+
+It uses the Python library [scikit-learn] (http://scikit-learn.org/stable/index.html).
+Input is taken from Lily, output is written to Lily and can be searched for using Solr. It currently works for text and pdf files.
 
 ## TODOs
 
@@ -10,6 +13,16 @@ This works, but is still work in progress.
 * change paths in the Mapper (-> py script locations)
 
 ## Usage
+
+The mapper needs an input list, in the format of
+
+    <path>,<contentType>
+
+according to the Solr query results. This allows to create customized queries and only classify certain files.
+This file must be uploaded to the Hadoop file system, in /user/<currentuser> and named "input".
+Alternatively, adapt the path in TextClassifierJob.java:
+
+    85 FileInputFormat.addInputPath(job, new Path("input"));
 
 Launch the MapReduce Job with
 
