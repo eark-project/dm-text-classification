@@ -17,6 +17,14 @@ Launch the MapReduce Job with
 
 Adapt the script if neccessary.
 
+## General Information:
+
+The provied model was trained on german/austrian newspaper articles, expect bad performance on out-of-domain data.
+
+However, feel free to train your own models, according to the [scikit-learn documentation] (http://scikit-learn.org/stable/documentation.html).
+
+An exemple script that was used to generate the newspaper model can be found in the /pyscript subfolder.
+
 ## Requirements
 
 To run the Python script, the following packages need to be installed: `numpy`, `scipy` and `scikit-learn`:
