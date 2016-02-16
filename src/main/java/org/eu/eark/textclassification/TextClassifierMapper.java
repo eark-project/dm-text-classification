@@ -26,12 +26,11 @@ import org.lilyproject.util.io.Closer;
 
 import java.io.IOException;
 import org.apache.commons.lang.RandomStringUtils;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.pdf.PDFParser;
@@ -49,9 +48,7 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
     /**
      * 
      * This class creates input for the classifier.py script and launches it via command line. 
-     * Currently, input is a list of .txt files in a directory.
-     * In order to be used on the cluster as a MapReduce job, it has to be slightly reworked: Take input from Lily,
-     * and write back to Lily (in: uncategorized text, out: categories).
+     * Input is taken from Lily (input file has a list of paths, that match Lily entries), output is written to Lily.
      * 
      * @param args the command line arguments
      * @throws pythoncommand.PythonException
@@ -81,17 +78,18 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
         String c = ",";
         String value_string = value.toString();
         int i = value_string.lastIndexOf(c);
-        String[] values =  {value_string.substring(0, i), value_string.substring(i)}; //should be able to handle "," in path
+        String[] values =  {value_string.substring(0, i), value_string.substring(i + 1)}; //should be able to handle "," in path
 	String idPath = values[0];
         String fileType = values[1];
         Configuration conf = context.getConfiguration();
         
-        String pyCode = "/home/janrn/classifier.py";
-        String model = "/home/janrn/textmodels/newspapers.pkl";
+        // get classifier and model from parameters
+        String classifier = conf.get(TextClassifierJob.CLASSIFIER);
+        String model = conf.get(TextClassifierJob.MODEL);
         
         List<String> pythonCmd = new ArrayList<>();
         pythonCmd.add("python");
-        pythonCmd.add(pyCode);
+        pythonCmd.add(classifier);
         pythonCmd.add(model);
         
         String result;
@@ -109,8 +107,9 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
                 
         // get input from Lily (content) and write if to the Hadoop filesystem
         String filename = RandomStringUtils.randomAlphanumeric(20);
-        FileSystem fs = FileSystem.get(conf);
-        Path pt = new Path(String.format("%s.out", filename));
+        FileSystem fs_local = FileSystem.getLocal(conf);
+        Path pt_local = new Path(String.format("/tmp/clfin/%s.out", filename));
+        InputStream contentstream = null;
         try {            
             String tableName = conf.get(TextClassifierJob.TABLE_NAME);
             LTable table = tableName == null ?
@@ -118,46 +117,43 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
             RecordId id = repository.getIdGenerator().newRecordId(idPath);
             
             // get the content fields' content - a BLOB
-            InputStream contentstream = table.getBlob(id, q("content")).getInputStream();
-            byte[] buff = new byte[4096];
-            int len = 0;
-            
-            // this writes a copy of the BLOB to Hadoop - beware of the file type !
-            FSDataOutputStream out = fs.create(pt);
-            while ((len = contentstream.read(buff)) != -1) {
-                out.write(buff, 0, len);
-            }
-            out.close();
+            contentstream = table.getBlob(id, q("content")).getInputStream();
         } catch (RecordNotFoundException e) {
             System.out.println("Record doesn't exist: " + idPath);
-	} catch (InterruptedException | RepositoryException | IOException e) {
+	} catch (InterruptedException | RepositoryException e) {
             throw new RuntimeException(e);
 	}
         
         if ("application/pdf".equals(fileType)) {
             // special case: BLOB is a pdf - extract the text and write as plain text
+            TikaInputStream tikainput = TikaInputStream.get(contentstream);
             BodyContentHandler handler = new BodyContentHandler(-1); // -1 means no char limit on parse
             Metadata metadata = new Metadata();
-            FSDataInputStream inputstream = new FSDataInputStream(fs.open(pt));
             ParseContext pcontext = new ParseContext();
             
             // parsing the document using PDF parser
             PDFParser pdfparser = new PDFParser();
             try {
-                pdfparser.parse(inputstream, handler, metadata, pcontext);
+                pdfparser.parse(tikainput, handler, metadata, pcontext);
             } catch (SAXException | TikaException ex) {
                 Logger.getLogger(TextClassifierMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
             
-            // write the content to file (metadata is omitted because not of interest) - pdf file is overwritten
-            BufferedWriter br = new BufferedWriter(new OutputStreamWriter(fs.create(pt, true)));
-            br.write(handler.toString());
+            // write the content to file (metadata is omitted because not of interest)
+            BufferedWriter br = new BufferedWriter(new OutputStreamWriter(fs_local.create(pt_local, true)));
+            br.write(handler.toString().replace("\n", " ")); // remove all the newlines - it confuses the classifier, for whatever reason
             br.close();
+        } else {
+            // every other file
+            // this writes a copy of the BLOB to the local filesystem - beware of the file type, must be plain text!
+            byte[] buff = new byte[4096];
+            int len = 0;
+            OutputStream out = fs_local.create(pt_local);
+            while ((len = contentstream.read(buff)) != -1) {
+                out.write(buff, 0, len);
+            }
+            out.close();
         }
-        
-        // move the file from Hadoop to the local filesystem, so it can be accessed by the python script
-        // local file will be deleted by the python script
-        fs.moveToLocalFile(pt, new Path("/tmp/clfin"));
         
         // add the filename to the python command
         pythonCmd.add(String.format("%s.out", filename));

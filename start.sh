@@ -4,4 +4,4 @@ export HADOOP_CLASSPATH=/usr/lib/hbase/hbase-0.94.2-cdh4.2.2-security.jar:/srv/l
 export LIBJARS=`echo ${HADOOP_CLASSPATH} | sed s/:/,/g`
 export HADOOP_USER_CLASSPATH_FIRST=true
 
-hadoop jar dm-textclassification-1.0.0-SNAPSHOT-mapreduce-job.jar -libjars ${LIBJARS} -t eark1 -z localhost > text-clf.out 2>&1 &
+hadoop jar dm-textclassification-1.0.0-SNAPSHOT-mapreduce-job.jar -libjars ${LIBJARS} -t eark1 -z localhost -i input -c /home/janrn/classifier.py -m /home/janrn/textmodels/newspapers.pkl > text-clf.out 2>&1 &
