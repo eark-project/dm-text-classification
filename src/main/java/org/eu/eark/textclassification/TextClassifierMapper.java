@@ -32,6 +32,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.pdf.PDFParser;
@@ -109,8 +110,11 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
                 
         // get input from Lily (content) and write if to the Hadoop filesystem
         String filename = RandomStringUtils.randomAlphanumeric(20);
-        FileSystem fs = FileSystem.get(conf);
-        Path pt = new Path(String.format("%s.out", filename));
+//        FileSystem fs_hdfs = FileSystem.get(conf);
+//        Path pt_hdfs = new Path(String.format("%s.out", filename));
+        FileSystem fs_local = FileSystem.getLocal(conf);
+        Path pt_local = new Path(String.format("/tmp/clfin/%s.out", filename));
+        InputStream contentstream = null;
         try {            
             String tableName = conf.get(TextClassifierJob.TABLE_NAME);
             LTable table = tableName == null ?
@@ -118,46 +122,48 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
             RecordId id = repository.getIdGenerator().newRecordId(idPath);
             
             // get the content fields' content - a BLOB
-            InputStream contentstream = table.getBlob(id, q("content")).getInputStream();
-            byte[] buff = new byte[4096];
-            int len = 0;
-            
-            // this writes a copy of the BLOB to Hadoop - beware of the file type !
-            FSDataOutputStream out = fs.create(pt);
-            while ((len = contentstream.read(buff)) != -1) {
-                out.write(buff, 0, len);
-            }
-            out.close();
+            contentstream = table.getBlob(id, q("content")).getInputStream();
         } catch (RecordNotFoundException e) {
             System.out.println("Record doesn't exist: " + idPath);
-	} catch (InterruptedException | RepositoryException | IOException e) {
+	} catch (InterruptedException | RepositoryException e) {
             throw new RuntimeException(e);
 	}
         
         if ("application/pdf".equals(fileType)) {
             // special case: BLOB is a pdf - extract the text and write as plain text
+            TikaInputStream tikainput = TikaInputStream.get(contentstream);
             BodyContentHandler handler = new BodyContentHandler(-1); // -1 means no char limit on parse
             Metadata metadata = new Metadata();
-            FSDataInputStream inputstream = new FSDataInputStream(fs.open(pt));
+            // FSDataInputStream inputstream = new FSDataInputStream(fs_hdfs.open(pt_hdfs));
             ParseContext pcontext = new ParseContext();
             
             // parsing the document using PDF parser
             PDFParser pdfparser = new PDFParser();
             try {
-                pdfparser.parse(inputstream, handler, metadata, pcontext);
+                pdfparser.parse(tikainput, handler, metadata, pcontext);
             } catch (SAXException | TikaException ex) {
                 Logger.getLogger(TextClassifierMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
             
             // write the content to file (metadata is omitted because not of interest) - pdf file is overwritten
-            BufferedWriter br = new BufferedWriter(new OutputStreamWriter(fs.create(pt, true)));
+            BufferedWriter br = new BufferedWriter(new OutputStreamWriter(fs_local.create(pt_local, true)));
             br.write(handler.toString());
             br.close();
+        } else {
+            // every other file
+            // this writes a copy of the BLOB to the local filesystem - beware of the file type !
+            byte[] buff = new byte[4096];
+            int len = 0;
+            OutputStream out = fs_local.create(pt_local);
+            while ((len = contentstream.read(buff)) != -1) {
+                out.write(buff, 0, len);
+            }
+            out.close();
         }
         
         // move the file from Hadoop to the local filesystem, so it can be accessed by the python script
         // local file will be deleted by the python script
-        fs.moveToLocalFile(pt, new Path("/tmp/clfin"));
+//        fs_hdfs.moveToLocalFile(pt_hdfs, new Path("/tmp/clfin"));
         
         // add the filename to the python command
         pythonCmd.add(String.format("%s.out", filename));
