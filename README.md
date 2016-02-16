@@ -19,7 +19,7 @@ The mapper needs an input list, in the format of
     <path>,<contentType>
 
 according to the Solr query results. This allows to create customized queries and only classify certain files.
-This file must be uploaded to the Hadoop file system, in /user/<currentuser>.
+This file must be uploaded to the Hadoop file system, in `/user/<username that executes hadoop commands>`.
 
 Launch the MapReduce Job with
 
