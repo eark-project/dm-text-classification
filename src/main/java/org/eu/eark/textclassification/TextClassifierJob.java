@@ -67,9 +67,6 @@ public class TextClassifierJob extends Configured implements Tool {
         job.setOutputValueClass(Text.class);
 
         // Mapper writes to Lily, so no Hadoop output
-        //job.setOutputFormatClass(TextOutputFormat.class);
-        //FileOutputFormat.setOutputPath(job, new Path("output"));
-        //MultipleOutputs.addNamedOutput(job, "out", TextOutputFormat.class, LongWritable.class, Text.class);
         job.setOutputFormatClass(NullOutputFormat.class);
         
         job.getConfiguration().set(LilyMapReduceUtil.ZK_CONNECT_STRING, zkConnectString);

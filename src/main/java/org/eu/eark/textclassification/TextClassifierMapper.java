@@ -26,8 +26,6 @@ import org.lilyproject.util.io.Closer;
 
 import java.io.IOException;
 import org.apache.commons.lang.RandomStringUtils;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
@@ -110,8 +108,6 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
                 
         // get input from Lily (content) and write if to the Hadoop filesystem
         String filename = RandomStringUtils.randomAlphanumeric(20);
-//        FileSystem fs_hdfs = FileSystem.get(conf);
-//        Path pt_hdfs = new Path(String.format("%s.out", filename));
         FileSystem fs_local = FileSystem.getLocal(conf);
         Path pt_local = new Path(String.format("/tmp/clfin/%s.out", filename));
         InputStream contentstream = null;
@@ -134,7 +130,6 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
             TikaInputStream tikainput = TikaInputStream.get(contentstream);
             BodyContentHandler handler = new BodyContentHandler(-1); // -1 means no char limit on parse
             Metadata metadata = new Metadata();
-            // FSDataInputStream inputstream = new FSDataInputStream(fs_hdfs.open(pt_hdfs));
             ParseContext pcontext = new ParseContext();
             
             // parsing the document using PDF parser
@@ -145,13 +140,13 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
                 Logger.getLogger(TextClassifierMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
             
-            // write the content to file (metadata is omitted because not of interest) - pdf file is overwritten
+            // write the content to file (metadata is omitted because not of interest)
             BufferedWriter br = new BufferedWriter(new OutputStreamWriter(fs_local.create(pt_local, true)));
-            br.write(handler.toString());
+            br.write(handler.toString().replace("\n", " ")); // remove all the newlines - it confuses the classifier, for whatever reason
             br.close();
         } else {
             // every other file
-            // this writes a copy of the BLOB to the local filesystem - beware of the file type !
+            // this writes a copy of the BLOB to the local filesystem - beware of the file type, must be plain text!
             byte[] buff = new byte[4096];
             int len = 0;
             OutputStream out = fs_local.create(pt_local);
@@ -160,10 +155,6 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
             }
             out.close();
         }
-        
-        // move the file from Hadoop to the local filesystem, so it can be accessed by the python script
-        // local file will be deleted by the python script
-//        fs_hdfs.moveToLocalFile(pt_hdfs, new Path("/tmp/clfin"));
         
         // add the filename to the python command
         pythonCmd.add(String.format("%s.out", filename));
