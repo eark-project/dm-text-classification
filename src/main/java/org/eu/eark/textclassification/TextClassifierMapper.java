@@ -81,7 +81,7 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
         String c = ",";
         String value_string = value.toString();
         int i = value_string.lastIndexOf(c);
-        String[] values =  {value_string.substring(0, i), value_string.substring(i)}; //should be able to handle "," in path
+        String[] values =  {value_string.substring(0, i), value_string.substring(i + 1)}; //should be able to handle "," in path
 	String idPath = values[0];
         String fileType = values[1];
         Configuration conf = context.getConfiguration();
