@@ -37,12 +37,13 @@ public class TextClassifierJob extends Configured implements Tool {
     private String zkConnectString;
     public static final String TABLE_NAME = "tableName";
     private String tableName;
-    // private static String inputFile;
+    private String inputFile;
+    public static final String CLASSIFIER = "classifier";
+    private String classifier;
+    public static final String MODEL = "model";
+    private String model;
 
     public static void main(String[] args) throws Exception {
-        // URL queue = new URL(args[0]); // Solr queue as parameter
-        // inputFile = args[0]; // file with list of lily IDs as input
-
         // Let <code>ToolRunner</code> handle generic command-line options
         int res = ToolRunner.run(new Configuration(), new TextClassifierJob(), args);
         System.exit(res);
@@ -79,7 +80,10 @@ public class TextClassifierJob extends Configured implements Tool {
                 job.getConfiguration().set(TABLE_NAME, tableName);
             }
         }
-        FileInputFormat.addInputPath(job, new Path("input"));
+        FileInputFormat.addInputPath(job, new Path(inputFile));
+        
+        job.getConfiguration().set(CLASSIFIER, classifier);
+        job.getConfiguration().set(MODEL, model);
 
         // Launch the job
         boolean b = job.waitForCompletion(true);
@@ -99,6 +103,19 @@ public class TextClassifierJob extends Configured implements Tool {
         Option zkOption = OptionBuilder.isRequired().withArgName("connection-string").hasArg().withDescription("ZooKeeper connection string: hostname1:port,hostname2:port,...").withLongOpt("zookeeper").create("z");
         cliOptions.addOption(zkOption);
 
+        // command line parameters (all mandatory) for text classification:
+        // -i: a file that contains on every line <path>,<application/type> for every Lily object that should be classified - must be on HDFS!
+        Option inputOption = OptionBuilder.isRequired().withArgName("input").hasArg().withDescription("File with paths and contentTypes (as saved in Lily)").withLongOpt("input").create("i");
+        cliOptions.addOption(inputOption);
+        
+        // -c: the python file containing the classifier that will be used (requires a path on the local filesystem)
+        Option classifierOption = OptionBuilder.isRequired().withArgName("classifier script").hasArg().withDescription("path to Python classifier script").withLongOpt("pyclf").create("c");
+        cliOptions.addOption(classifierOption);
+        
+        // -m: the model used for classification (requires a path on the local filesystem, to <model>.pkl - all other .pkl files for this model must be in the same folder)
+        Option modelOption = OptionBuilder.isRequired().withArgName("model").hasArg().withDescription("path to model").withLongOpt("model").create("m");
+        cliOptions.addOption(modelOption);
+        
         CommandLineParser parser = new PosixParser();
         CommandLine cmd;
         try {
@@ -114,6 +131,9 @@ public class TextClassifierJob extends Configured implements Tool {
 
         tableName = cmd.getOptionValue(tableOption.getOpt());
         zkConnectString = cmd.getOptionValue(zkOption.getOpt());
+        inputFile = cmd.getOptionValue(inputOption.getOpt());
+        classifier = cmd.getOptionValue(classifierOption.getOpt());
+        model = cmd.getOptionValue(modelOption.getOpt());
 
         return 0;
     }

@@ -48,9 +48,7 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
     /**
      * 
      * This class creates input for the classifier.py script and launches it via command line. 
-     * Currently, input is a list of .txt files in a directory.
-     * In order to be used on the cluster as a MapReduce job, it has to be slightly reworked: Take input from Lily,
-     * and write back to Lily (in: uncategorized text, out: categories).
+     * Input is taken from Lily (input file has a list of paths, that match Lily entries), output is written to Lily.
      * 
      * @param args the command line arguments
      * @throws pythoncommand.PythonException
@@ -85,12 +83,13 @@ public class TextClassifierMapper extends Mapper<Object, Text, Text, Text> {
         String fileType = values[1];
         Configuration conf = context.getConfiguration();
         
-        String pyCode = "/home/janrn/classifier.py";
-        String model = "/home/janrn/textmodels/newspapers.pkl";
+        // get classifier and model from parameters
+        String classifier = conf.get(TextClassifierJob.CLASSIFIER);
+        String model = conf.get(TextClassifierJob.MODEL);
         
         List<String> pythonCmd = new ArrayList<>();
         pythonCmd.add("python");
-        pythonCmd.add(pyCode);
+        pythonCmd.add(classifier);
         pythonCmd.add(model);
         
         String result;
