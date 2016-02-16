@@ -10,7 +10,7 @@ Input is taken from Lily, output is written to Lily and can be searched for usin
 * verfiy that it works on the "real" cluster (currently tested on earkdev) 
 ** mainly the communication between Python and Java/MapReduce Jobs
 ** also find an easy way to provide the Python libraries (see below)
-* change paths in the Mapper (-> py script locations)
+* <s>change paths in the Mapper (-> py script locations)</s>
 
 ## Usage
 
@@ -19,16 +19,17 @@ The mapper needs an input list, in the format of
     <path>,<contentType>
 
 according to the Solr query results. This allows to create customized queries and only classify certain files.
-This file must be uploaded to the Hadoop file system, in /user/<currentuser> and named "input".
-Alternatively, adapt the path in TextClassifierJob.java:
-
-    85 FileInputFormat.addInputPath(job, new Path("input"));
+This file must be uploaded to the Hadoop file system, in /user/<currentuser>.
 
 Launch the MapReduce Job with
 
     ./start.sh
 
-Adapt the script if neccessary.
+Adapt the script if neccessary:
+
+    -i <input file name on hdfs>
+    -c <path to the classifier script (local)>
+    -m <path to the model (local)>
 
 ## General Information:
 
